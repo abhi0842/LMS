@@ -44,33 +44,17 @@ const movingAverage = (data, windowSize) => {
 export const ConvergenceCurve = () => {
   const { diagnostics, config } = useContext(SimulationContext);
   const [showMSE, setShowMSE] = useState(true);
-  const [showError, setShowError] = useState(false);
   const [smoothingWindow, setSmoothingWindow] = useState(50);
   const [useSmoothing, setUseSmoothing] = useState(true);
   const [useDb, setUseDb] = useState(true);
 
   const { chartData, phaseMarkers, finalSummary } = useMemo(() => {
     if (!diagnostics) return { chartData: null, phaseMarkers: null, finalSummary: null };
-    const { errorHistory, mseHistory, mseHistoryChart } = diagnostics;
-    const iterations = errorHistory?.length || 0;
+    const { mseHistory, mseHistoryChart } = diagnostics;
+    const iterations = mseHistoryChart?.length || mseHistory?.length || 0;
     if (iterations === 0) return { chartData: null, phaseMarkers: null, finalSummary: null };
 
     const datasets = [];
-
-    if (showError && errorHistory) {
-      const raw = errorHistory.map(e => Math.abs(e));
-      const data = useSmoothing ? movingAverage(raw, smoothingWindow) : raw;
-      datasets.push({
-        label: "|eᵣ[n]|   Abs residual error (mV)",
-        data: data.map((y, i) => ({ x: i, y: useDb ? 20 * Math.log10(Math.max(y, 1e-8)) : y })),
-        borderColor: "#e67e22",
-        backgroundColor: "#e67e2222",
-        borderWidth: 1.4,
-        pointRadius: 0,
-        tension: 0.1,
-        yAxisID: "y1",
-      });
-    }
 
     if (showMSE && (mseHistory?.length || mseHistoryChart?.length)) {
       const raw = mseHistoryChart && mseHistoryChart.length > 0
@@ -135,7 +119,7 @@ export const ConvergenceCurve = () => {
       phaseMarkers: null,
       finalSummary: null,
     };
-  }, [diagnostics, showMSE, showError, smoothingWindow, useSmoothing, useDb, config.stepSize]);
+  }, [diagnostics, showMSE, smoothingWindow, useSmoothing, useDb, config.stepSize]);
 
   const options = useMemo(() => ({
     responsive: true,
@@ -175,16 +159,8 @@ export const ConvergenceCurve = () => {
         ticks: { font: { size: 11 }, callback: (v) => useDb ? v.toFixed(0) + " dB" : Number(v).toExponential(1) },
         grid: { color: "rgba(0,0,0,0.05)" },
       },
-      y1: {
-        type: "linear",
-        display: showError,
-        position: "right",
-        title: { display: true, text: useDb ? "20·log₁₀|eᵣ|   dB" : "|eᵣ[n]|   mV", font: { weight: "bold", size: 12 } },
-        ticks: { font: { size: 11 }, callback: (v) => useDb ? v.toFixed(0) + " dB" : v.toFixed(3) },
-        grid: { drawOnChartArea: false },
-      },
     },
-  }), [showError, showMSE, useDb]);
+  }), [showMSE, useDb]);
 
   if (!diagnostics) return null;
 
@@ -211,10 +187,6 @@ export const ConvergenceCurve = () => {
         <label style={{ display: "flex", alignItems: "center", gap: "0.25rem", cursor: "pointer" }}>
           <input type="checkbox" checked={showMSE} onChange={(e) => setShowMSE(e.target.checked)} />
           Show MSE (log plot recommended)
-        </label>
-        <label style={{ display: "flex", alignItems: "center", gap: "0.25rem", cursor: "pointer" }}>
-          <input type="checkbox" checked={showError} onChange={(e) => setShowError(e.target.checked)} />
-          Show |eᵣ| (abs residual)
         </label>
         <label style={{ display: "flex", alignItems: "center", gap: "0.25rem", cursor: "pointer" }}>
           <input type="checkbox" checked={useDb} onChange={(e) => setUseDb(e.target.checked)} />

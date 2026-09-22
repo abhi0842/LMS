@@ -6,13 +6,13 @@ import { EcgNoisy } from "../graph/EcgNoisy";
 import { EcgFilter } from "../graph/EcgFilter";
 import { EcgUnfilteredPSD } from "../graph/EcgUnfilteredPSD";
 import { EcgFilteredPSD } from "../graph/EcgFilteredPSD";
-import { ConvergenceCurve } from "../educational/ConvergenceCurve";
+import { PerformanceMetrics } from "../educational/PerformanceMetrics";
 
 export const LeftPanel = () => {
   const {
     generateECG, showCleanPlot, setShowCleanPlot,
     applyNoiseTrigger, showNoisyPlots, setShowNoisyPlots,
-    filteredECG, applypsdTrigger,
+    filteredECG, applypsdTrigger, showMetrics,
     selectedArtifact,
   } = useContext(SimulationContext);
 
@@ -20,6 +20,15 @@ export const LeftPanel = () => {
     <div className={styles.leftPanelContainer}>
       <div className={styles.left}>
         <div id="signal-plots" style={{ position: "relative" }}>
+          {applypsdTrigger && filteredECG && (
+            <div id="psdSection" style={{ position: "relative", marginBottom: "1rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                <EcgUnfilteredPSD />
+                <EcgFilteredPSD />
+              </div>
+            </div>
+          )}
+
           {/* 1. Clean ECG s[n] */}
           {generateECG && showCleanPlot && (
             <div style={{ position: "relative" }}>
@@ -92,24 +101,12 @@ export const LeftPanel = () => {
             <EcgFilter />
           )}
 
-          {/* PSD plots — always shown after filter runs, auto */}
-          {applypsdTrigger && filteredECG && (
-            <div id="psdSection" style={{ position: "relative", marginTop: "1rem" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                <EcgUnfilteredPSD />
-                <EcgFilteredPSD />
-              </div>
-              <hr style={{ margin: "1.25rem 0" }} />
-            </div>
-          )}
         </div>
 
-        {/* Learning curve */}
-        {filteredECG && (
-          <div id="convergenceSection">
-            <ConvergenceCurve />
-          </div>
-        )}
+        {showMetrics && filteredECG && <PerformanceMetrics />}
+
+        {/* LMS Diagnostics Section — always shown after filter applied */}
+      
       </div>
     </div>
   );

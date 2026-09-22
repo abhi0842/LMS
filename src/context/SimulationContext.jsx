@@ -145,6 +145,7 @@ export const SimulationProvider = ({ children }) => {
   const [generateECG, setGenerateECG] = useState(false);
   const [applyNoiseTrigger, setApplyNoiseTrigger] = useState(false);
   const [applypsdTrigger, setApplypsdTrigger] = useState(false);
+  const [showMetrics, setShowMetrics] = useState(false);
 
   const [showCleanPlot, setShowCleanPlot] = useState(false);
   const [showNoisyPlots, setShowNoisyPlots] = useState(false);
@@ -234,7 +235,7 @@ export const SimulationProvider = ({ children }) => {
       setArtifactSignal([]); setArtifactSamples([]);
       setArtifactGenerated(false); setApplyNoiseTrigger(false); setShowNoisyPlots(false);
       setDesiredSignal([]); setDesiredSamples([]); setReferenceSignal([]);
-      setFilteredECG(false); setDiagnostics(null);
+      setFilteredECG(false); setApplypsdTrigger(false); setShowMetrics(false); setDiagnostics(null);
 
       markAction("GENERATE_SIGNAL");
     } catch (e) { console.error(e); }
@@ -280,6 +281,9 @@ export const SimulationProvider = ({ children }) => {
     setArtifactGenerated(true);
     setApplyNoiseTrigger(true);
     setShowNoisyPlots(true);
+    setFilteredECG(false);
+    setApplypsdTrigger(false);
+    setShowMetrics(false);
     setDiagnostics(null);
     markAction("ADD_NOISE");
   }, [cleanSignal, originalFs, selectedArtifact, artifactParams]);
@@ -289,16 +293,9 @@ export const SimulationProvider = ({ children }) => {
       setSelectedLead(which);
       setArtifactSignal([]); setArtifactGenerated(false); setApplyNoiseTrigger(false);
       setDesiredSignal([]); setReferenceSignal([]);
-      setFilteredECG(false); setDiagnostics(null);
+      setFilteredECG(false); setApplypsdTrigger(false); setShowMetrics(false); setDiagnostics(null);
     }
   }, [selectedLead]);
-
-  useEffect(() => {
-    if (applyNoiseTrigger && artifactGenerated) {
-      setFilteredECG(true);
-      setApplypsdTrigger(true);
-    }
-  }, [config, applyNoiseTrigger, artifactGenerated]);
 
   const primarySignal = desiredSignal;
   const primarySamples = desiredSamples;
@@ -363,6 +360,7 @@ export const SimulationProvider = ({ children }) => {
         filteredSamples, setFilteredSamples,
         filteredECG, setFilteredECG,
         applypsdTrigger, setApplypsdTrigger,
+        showMetrics, setShowMetrics,
 
         config, setConfig,
 

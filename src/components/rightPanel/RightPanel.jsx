@@ -5,7 +5,6 @@ import {
   ARTIFACT_TYPES,
   calculateSNR,
   calculatePSNR,
-  calculateMMSE,
   calculateCCF,
 } from "../../context/SimulationContext";
 import styles from "./rightPanel.module.css";
@@ -20,7 +19,7 @@ function useReferencePower(arr) {
 export const RightPanel = () => {
   const {
     selectedDataset, setSelectedDataset,
-    datasetMeta, selectedLead, switchCleanLead,
+    datasetMeta,
     generateECG, loadCleanSignal, loadingState,
     windowStart, windowLength, setWindowStart, setWindowLength,
     selectedArtifact, setSelectedArtifact,
@@ -31,8 +30,8 @@ export const RightPanel = () => {
 
     config, setConfig,
 
-    metrics, setMetrics,
-    setFilteredECG, setApplypsdTrigger, filteredECG,
+    setMetrics,
+    setFilteredECG, setApplypsdTrigger, filteredECG, setShowMetrics,
   } = useContext(SimulationContext);
 
   const [filterOrder, setFilterOrder] = useState(config.filterOrder ?? 32);
@@ -40,10 +39,6 @@ export const RightPanel = () => {
 
   const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
   const signalPower = useReferencePower(referenceSignal);
-  const M = Math.max(1, Math.min(256, Math.floor(filterOrder) || 1));
-  const muMax = signalPower > 0 ? 1 / (M * signalPower + 1e-8) : 0.01;
-  const currentMu = clamp(Number(stepSize) || 0.005, 1e-8, muMax * 0.9);
-  const muPct = muMax > 0 ? Math.min(100, (currentMu / muMax) * 100) : 0;
 
   useEffect(() => {
     if (!applyNoiseTrigger || !artifactGenerated) return;
@@ -89,17 +84,16 @@ export const RightPanel = () => {
   const handleRunLMS = () => {
     if (!artifactGenerated || !referenceSignal.length || !desiredSignal.length) return;
     setFilteredECG(true);
-    setApplypsdTrigger(true);
+    setApplypsdTrigger(false);
   };
 
-  const muStatusColor = muPct > 80 ? "#c0392b" : muPct > 50 ? "#d47700" : "#27ae60";
-  const muStatusText = muPct > 80
-    ? "⚠️ Near instability — excess MSE will be large; reduce μ for cleaner steady state."
-    : muPct > 50
-      ? "⚡ Aggressive learning — fast convergence, moderate excess error."
-      : muPct > 15
-        ? "✓ Balanced — good tradeoff between speed and accuracy."
-        : "🐢 Conservative — slow convergence but very accurate steady state (low EMSE).";
+  const handleShowPSD = () => {
+    if (filteredECG) setApplypsdTrigger(true);
+  };
+
+  const handleShowMetrics = () => {
+    if (filteredECG) setShowMetrics(true);
+  };
 
   return (
     <div className={styles.rightPanelContainer}>
@@ -284,99 +278,24 @@ export const RightPanel = () => {
             >
                Run LMS
             </button>
+            <button
+              type="button"
+              onClick={handleShowPSD}
+              disabled={!filteredECG}
+            >
+              View PSD
+            </button>
+            <button
+              type="button"
+              onClick={handleShowMetrics}
+              disabled={!filteredECG}
+            >
+              View Metrics
+            </button>
           </div>
         </div>
 
         {/* Step 4: Metrics */}
-        {applyNoiseTrigger && filteredECG && (
-          <div className={styles.box} style={{ backgroundColor: "#f8f9fa" }}>
-            <h3>Step 4: Performance Metrics</h3>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.92rem" }}>
-              <thead>
-                <tr style={{ backgroundColor: "#2c3e50", color: "white" }}>
-                  <th style={{ border: "1px solid #ddd", padding: "6px", textAlign: "left" }}>Metric</th>
-                  <th style={{ border: "1px solid #ddd", padding: "6px", textAlign: "center" }}>Before (d vs s)</th>
-                  <th style={{ border: "1px solid #ddd", padding: "6px", textAlign: "center" }}>After (e vs s)</th>
-                  <th style={{ border: "1px solid #ddd", padding: "6px", textAlign: "center" }}>Δ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(() => {
-                  const rows = [];
-                  const metricDefs = [
-                    {
-                      key: "mmse",
-                      label: "MSE (lower)",
-                      fmt: (v) => v.toFixed(6),
-                      before: () => artifactGenerated ? calculateMMSE(cleanSignal, desiredSignal) : null,
-                      after: () => Number(metrics.mmse),
-                      better: (b, a) => a < b,
-                      desc: (b, a, ok) => ok
-                        ? `↓ ${(b - a).toFixed(6)}`
-                        : `↑ ${(a - b).toFixed(6)}`,
-                    },
-                    {
-                      key: "psnr",
-                      label: "PSNR (dB, higher)",
-                      fmt: (v) => v.toFixed(2),
-                      before: () => Number(metrics.psnr_before),
-                      after: () => Number(metrics.psnr_after),
-                      better: (b, a) => a > b,
-                      desc: (b, a, ok) => ok
-                        ? `↑ ${(a - b).toFixed(2)} dB`
-                        : `↓ ${(b - a).toFixed(2)} dB`,
-                    },
-                    {
-                      key: "snr",
-                      label: "SNR (dB, higher)",
-                      fmt: (v) => v.toFixed(2),
-                      before: () => Number(metrics.snr_before),
-                      after: () => Number(metrics.snr_after),
-                      better: (b, a) => a > b,
-                      desc: (b, a, ok) => ok
-                        ? `↑ ${(a - b).toFixed(2)} dB`
-                        : `↓ ${(b - a).toFixed(2)} dB`,
-                    },
-                    {
-                      key: "ccf",
-                      label: "Correlation (higher)",
-                      fmt: (v) => v.toFixed(4),
-                      before: () => Number(metrics.ccf_before),
-                      after: () => Number(metrics.ccf_after),
-                      better: (b, a) => a > b,
-                      desc: (b, a, ok) => ok
-                        ? `↑ ${(a - b).toFixed(4)}`
-                        : `↓ ${(b - a).toFixed(4)}`,
-                    },
-                  ];
-                  const hasAfter = !!Number(metrics.mmse || 0) || metrics.psnr_after !== "0.00";
-                  for (const md of metricDefs) {
-                    const b = md.before();
-                    const a = hasAfter ? md.after() : null;
-                    const ok = a != null && md.better(b, a);
-                    rows.push(
-                      <tr key={md.key}>
-                        <td style={{ border: "1px solid #ddd", padding: "6px", fontWeight: "bold" }}>{md.label}</td>
-                        <td style={{ border: "1px solid #ddd", padding: "6px", textAlign: "center" }}>{b != null ? md.fmt(b) : "—"}</td>
-                        <td style={{ border: "1px solid #ddd", padding: "6px", textAlign: "center" }}>{a != null ? md.fmt(a) : "—"}</td>
-                        <td style={{
-                          border: "1px solid #ddd",
-                          padding: "6px",
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: a == null ? "#aaa" : (ok ? "#27ae60" : "#c0392b"),
-                        }}>
-                          {a != null ? md.desc(b, a, ok) : "—"}
-                        </td>
-                      </tr>
-                    );
-                  }
-                  return rows;
-                })()}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
     </div>
   );

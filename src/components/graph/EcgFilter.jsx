@@ -187,7 +187,6 @@ export const EcgFilter = () => {
   const endIdx = startIdx + lengthIdx;
   const sSlice = cleanSignal?.slice(startIdx, endIdx) || [];
   const eSlice = result.EClean.slice(startIdx, endIdx);
-  const resSlice = result.Residual.slice(startIdx, endIdx);
   const dSlice = desiredSignal?.slice(startIdx, endIdx) || [];
 
   const leadName = selectedLead === "A" ? datasetMeta.leadNameA : datasetMeta.leadNameB;
@@ -263,60 +262,6 @@ export const EcgFilter = () => {
     },
   };
 
-  const residualChartData = {
-    datasets: [
-      {
-        label: `Residual eᵣ[n] = s[n] − e[n]  (remaining error after LMS)`,
-        data: downsampleByIndexOffset(resSlice, startIdx, 20000),
-        borderColor: "#dc2626",
-        backgroundColor: "rgba(220, 38, 38, 0.12)",
-        fill: true,
-        borderWidth: 1.3,
-        pointRadius: 0,
-        tension: 0.05,
-      },
-    ],
-  };
-
-  const residualOptions = {
-    responsive: true,
-    animation: false,
-    parsing: false,
-    interaction: { mode: "nearest", intersect: false, axis: "x" },
-    plugins: {
-      legend: { display: true, position: "bottom", labels: { boxWidth: 16, font: { size: 12 } } },
-      title: {
-        display: true,
-        text: `(b)  Residual Error  ·  Lower amplitude = better LMS convergence`,
-        font: { size: 14, weight: "bold" },
-        color: "#111",
-        padding: { bottom: 12 },
-      },
-      tooltip: {
-        callbacks: {
-          label: (ctx) =>
-            `Residual @ n=${ctx.parsed.x?.toLocaleString()} : ${Number(ctx.parsed.y).toFixed(4)} mV`,
-        },
-      },
-      zoom: {
-        pan: { enabled: true, mode: "x" },
-        zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: "x" },
-      },
-    },
-    scales: {
-      x: {
-        type: "linear",
-        title: { display: true, text: "Sample Index n", font: { weight: "bold" } },
-        grid: { color: "rgba(0,0,0,0.06)" },
-      },
-      y: {
-        type: "linear",
-        title: { display: true, text: "Error (mV)", font: { weight: "bold" } },
-        grid: { color: "rgba(0,0,0,0.06)" },
-      },
-    },
-  };
-
   return (
     <div
       id="ecg-filter-container"
@@ -327,8 +272,6 @@ export const EcgFilter = () => {
       }}
     >
       <Line data={mainChartData} options={mainOptions} height={190} />
-      <div style={{ height: "0.75rem" }} />
-      <Line data={residualChartData} options={residualOptions} height={140} />
     </div>
   );
 };
