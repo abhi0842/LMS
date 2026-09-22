@@ -1,0 +1,29 @@
+import Fili from "fili";
+
+export function computePSD(signal, fs) {
+  //console.log("signalLength", signal.length);n
+  const N = 1 << Math.ceil(Math.log2(signal.length));
+  //console.log("N", N);
+  const fft = new Fili.Fft(N);
+
+  const buffer = new Array(N).fill(0);
+  for (let i = 0; i < signal.length; i++) buffer[i] = signal[i];
+
+
+  // Forward FFT → magnitude is AMPLITUDE SPECTRUM
+  const fftResult = fft.forward(buffer, 'hanning');
+  const magnitude = fft.magnitude(fftResult); 
+  const windowCorrect = (3*N)/8; 
+
+  const half = Math.floor(N / 2);
+  const freq = [];
+  const psd = [];
+
+  for (let i = 0; i < half; i++) {
+  freq.push((i * fs) / N);
+  const onesidedFactor = (i===0  || i=== half-1) ? 1 : 2; // DC and Nyquist components are not doubled
+  psd.push(onesidedFactor * (magnitude[i] * magnitude[i]) / (windowCorrect * fs)); // PSD in V^2/Hz
+  }
+
+  return { freqs: freq, psd: psd };
+}
