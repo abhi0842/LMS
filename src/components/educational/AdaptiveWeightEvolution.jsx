@@ -36,6 +36,12 @@ export const AdaptiveWeightEvolution = () => {
 
     const iterations = weightsHistory.length;
     const numCoeffs = Math.min(visibleCoeffs, weightsHistory[0]?.length || 0);
+    const sampleStride = Math.max(1, Math.ceil(iterations / 1500));
+    const sampleIndices = [];
+    for (let n = 0; n < iterations; n += sampleStride) sampleIndices.push(n);
+    if (sampleIndices[sampleIndices.length - 1] !== iterations - 1) {
+      sampleIndices.push(iterations - 1);
+    }
 
     const datasets = [];
     const colors = [
@@ -52,7 +58,7 @@ export const AdaptiveWeightEvolution = () => {
     for (let i = 0; i < numCoeffs; i++) {
       datasets.push({
         label: `w${i}`,
-        data: weightsHistory.map((w) => w[i]),
+        data: sampleIndices.map((n) => ({ x: n, y: weightsHistory[n][i] })),
         borderColor: colors[i % colors.length],
         backgroundColor: colors[i % colors.length] + "20",
         borderWidth: 1.5,
@@ -62,9 +68,7 @@ export const AdaptiveWeightEvolution = () => {
       });
     }
 
-    const labels = Array.from({ length: iterations }, (_, i) => i);
-
-    return { labels, datasets };
+    return { datasets };
   }, [diagnostics, visibleCoeffs]);
 
   const options = useMemo(
@@ -74,7 +78,13 @@ export const AdaptiveWeightEvolution = () => {
       animation: false,
       plugins: {
         legend: { display: true, position: "top" },
-        tooltip: { mode: "index", intersect: false },
+        tooltip: {
+          mode: "nearest",
+          intersect: false,
+          callbacks: {
+            title: (items) => `Sample n = ${Number(items[0]?.parsed?.x ?? 0).toLocaleString()}`,
+          },
+        },
         zoom: {
           pan: { enabled: true, mode: "x" },
           zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: "x" },
@@ -83,7 +93,7 @@ export const AdaptiveWeightEvolution = () => {
       scales: {
         x: {
           type: "linear",
-          title: { display: true, text: "Iteration" },
+          title: { display: true, text: "Sample n (weights before update)" },
           ticks: { maxTicksLimit: 10 },
         },
         y: {
