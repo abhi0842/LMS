@@ -37,9 +37,9 @@ export const TopPanel = () => {
             <>
               <button ref={buttonRef} className={styles.panelButton} onClick={toggleInstruction}>
                 <span className={styles.buttonIcon}>ℹ️</span>
-                LMS Theory &amp; Instructions
+              Instructions
               </button>
-              <button
+              {/* <button
                 id="guideButton"
                 className={styles.panelButton}
                 onClick={toggleGuide}
@@ -47,7 +47,7 @@ export const TopPanel = () => {
               >
                 <span className={styles.buttonIcon}>🚀</span>
                 Guided Tutor
-              </button>
+              </button> */}
             </>
           )}
         </div>

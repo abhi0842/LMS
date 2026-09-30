@@ -5,22 +5,25 @@ import { Line } from "react-chartjs-2";
 import styles from "./ecgUnfilteredPSD.module.css";
 
 export const EcgUnfilteredPSD = () => {
-  const { rawSamples, generateECG, originalFs, noisySamples } = useContext(SimulationContext);
+  const { rawSamples, generateECG, originalFs, noisySamples, filteredSamples } = useContext(SimulationContext);
 
-  const psdData = useMemo(() => {
-    if (!generateECG) return null;
+  const { psdData, sharedPeak } = useMemo(() => {
+    if (!generateECG) return { psdData: null, sharedPeak: 1 };
     const source = noisySamples && noisySamples.length > 0 ? noisySamples : rawSamples;
-    if (!source || source.length === 0) return null;
-    const signal = source.map((p) => p.y);
-    return computePSD(signal, originalFs);
-  }, [rawSamples, generateECG, originalFs, noisySamples]);
+    if (!source?.length) return { psdData: null, sharedPeak: 1 };
+    const beforePsd = computePSD(source.map((p) => p.y), originalFs);
+    const afterSignal = filteredSamples?.map((p) => p.y) || [];
+    const afterPsd = afterSignal.length ? computePSD(afterSignal, originalFs) : null;
+    const peak = Math.max(
+      ...beforePsd.psd,
+      ...(afterPsd?.psd || [])
+    );
+    return { psdData: beforePsd, sharedPeak: peak || 1 };
+  }, [rawSamples, generateECG, originalFs, noisySamples, filteredSamples]);
 
   if (!psdData) return null;
 
-  const minPsd = Math.min(...psdData.psd.filter(v => v > 0));
-  const refDb = minPsd;
-
-  const yVals = psdData.psd.map(p => 10 * Math.log10((p + 1e-20) / refDb));
+  const yVals = psdData.psd.map(p => 10 * Math.log10((p + 1e-20) / sharedPeak));
 
   const chartData = {
     datasets: [
@@ -44,6 +47,11 @@ export const EcgUnfilteredPSD = () => {
     interaction: { mode: "index", intersect: false },
     plugins: {
       legend: { display: false },
+      title: {
+        display: true,
+        text: "Before LMS",
+        font: { size: 13, weight: "bold" },
+      },
       tooltip: {
         callbacks: {
           label: (ctx) => {
@@ -68,9 +76,11 @@ export const EcgUnfilteredPSD = () => {
         grid: { color: "rgba(0,0,0,0.05)" },
       },
       y: {
+        min: -80,
+        max: 0,
         title: {
           display: true,
-          text: "PSD (dB)",
+          text: "Relative PSD (dB)",
           font: { size: 12, weight: "bold" },
         },
         ticks: { font: { size: 11 }, callback: (v) => v.toFixed(0) + " dB" },

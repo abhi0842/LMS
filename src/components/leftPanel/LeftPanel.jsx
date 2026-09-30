@@ -7,6 +7,7 @@ import { EcgFilter } from "../graph/EcgFilter";
 import { EcgUnfilteredPSD } from "../graph/EcgUnfilteredPSD";
 import { EcgFilteredPSD } from "../graph/EcgFilteredPSD";
 import { PerformanceMetrics } from "../educational/PerformanceMetrics";
+import { AdaptiveWeightEvolution } from "../educational/AdaptiveWeightEvolution";
 
 export const LeftPanel = () => {
   const {
@@ -32,7 +33,7 @@ export const LeftPanel = () => {
           {/* 1. Clean ECG s[n] */}
           {generateECG && showCleanPlot && (
             <div style={{ position: "relative" }}>
-              <button
+              {/* <button
                 type="button"
                 onClick={() => setShowCleanPlot(false)}
                 style={{
@@ -44,7 +45,7 @@ export const LeftPanel = () => {
                   padding: "0.25rem 0.6rem", cursor: "pointer",
                   fontSize: "0.8rem", fontWeight: "bold",
                 }}
-              >Hide Clean s[n]</button>
+              >Hide Clean s[n]</button> */}
               <EcgUnfilter />
             </div>
           )}
@@ -52,7 +53,7 @@ export const LeftPanel = () => {
           {/* 2. Desired d[n] + reference x[n] plots */}
           {generateECG && applyNoiseTrigger && showNoisyPlots && (
             <div style={{ position: "relative", marginTop: "1rem" }}>
-              <button
+              {/* <button
                 type="button"
                 onClick={() => setShowNoisyPlots(false)}
                 style={{
@@ -64,7 +65,7 @@ export const LeftPanel = () => {
                   padding: "0.25rem 0.6rem", cursor: "pointer",
                   fontSize: "0.8rem", fontWeight: "bold",
                 }}
-              >Hide d[n] / x[n]</button>
+              >Hide d[n] / x[n]</button> */}
               <EcgNoisy />
             </div>
           )}
@@ -98,7 +99,10 @@ export const LeftPanel = () => {
 
           {/* 3. Filtered output (overlay) + residual error */}
           {filteredECG && (
-            <EcgFilter />
+            <>
+              <EcgFilter />
+              <AdaptiveWeightEvolution />
+            </>
           )}
 
         </div>

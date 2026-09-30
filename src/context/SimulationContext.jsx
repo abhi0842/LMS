@@ -76,11 +76,16 @@ export const DATASETS = [
 ];
 
 export const ARTIFACT_TYPES = [
-  
-  { id: "PLI", label: "Power Line Interference (PLI)", description: "50 Hz mains hum (sine wave)" },
-  { id: "BW",  label: "Baseline Wander (BW)",   description: "Low-frequency baseline drift (0.3-0.5 Hz sine)" },
-  { id: "EMG", label: "Electromyogram / Muscle Artifacts (EMG)", description: "Gaussian random noise (muscle potentials)" },
+  { id: "PLI", label: "Power Line Interference (50 Hz)" },
+  { id: "BW", label: "Baseline Wander" },
+  { id: "EMG", label: "Muscle Noise (EMG)" },
 ];
+
+const ARTIFACT_SETTINGS = {
+  PLI: { amplitude: 0.08, frequency: 50 },
+  BW: { amplitude: 0.2, frequency: 0.33 },
+  EMG: { amplitude: 0.04 },
+};
 
 export const SimulationProvider = ({ children }) => {
   const [time, setTime] = useState(10);
@@ -101,12 +106,6 @@ export const SimulationProvider = ({ children }) => {
   const cleanSamples = cleanSignal.map((y, i) => ({ x: i / originalFs, y }));
 
   const [selectedArtifact, setSelectedArtifact] = useState("PLI");
-  const [artifactParams, setArtifactParams] = useState({
-    BW:  { amplitude: 0.20, freq: 0.33 },
-    PLI: { amplitude: 0.08, freq: 50 },
-    EMG: { amplitude: 0.04 },
-  });
-
   const [artifactSignal, setArtifactSignal] = useState([]);
   const [artifactSamples, setArtifactSamples] = useState([]);
   const [artifactGenerated, setArtifactGenerated] = useState(false);
@@ -122,7 +121,7 @@ export const SimulationProvider = ({ children }) => {
   const [config, setConfig] = useState({
     filterType: "LMS",
     filterOrder: 32,
-    stepSize: 0.005,
+    stepSize: 0.1,
   });
 
   const [metrics, setMetrics] = useState({
@@ -255,18 +254,26 @@ export const SimulationProvider = ({ children }) => {
 
     let noise; let ref;
     if (selectedArtifact === "BW") {
-      const { amplitude, freq } = artifactParams.BW;
-      noise = addBaselineWander(zeros, fs, amplitude, freq);
-      ref = addBaselineWander(zeros, fs, amplitude, freq);
+      const { amplitude, frequency } = ARTIFACT_SETTINGS.BW;
+      noise = addBaselineWander(zeros, fs, amplitude, frequency);
+      ref = zeros.map((_, i) =>
+        amplitude * 0.85 * Math.sin(2 * Math.PI * frequency * (i / fs) + 0.25)
+        + (Math.random() - 0.5) * amplitude * 0.08
+      );
     } else if (selectedArtifact === "PLI") {
-      const { amplitude, freq } = artifactParams.PLI;
-      noise = addPowerlineNoise(zeros, fs, amplitude, freq);
-      ref = addPowerlineNoise(zeros, fs, amplitude, freq);
+      const { amplitude, frequency } = ARTIFACT_SETTINGS.PLI;
+      noise = addPowerlineNoise(zeros, fs, amplitude, frequency);
+      ref = zeros.map((_, i) =>
+        amplitude * 0.9 * Math.sin(2 * Math.PI * frequency * (i / fs) + 0.2)
+        + (Math.random() - 0.5) * amplitude * 0.08
+      );
     } else {
-      const { amplitude } = artifactParams.EMG;
+      const { amplitude } = ARTIFACT_SETTINGS.EMG;
       noise = addMuscleNoise(zeros, amplitude);
       const delay = Math.max(1, Math.floor(fs * 0.01));
-      ref = new Array(N).fill(0).map((_, i) => noise[Math.max(0, i - delay)]);
+      ref = noise.map((_, i) =>
+        noise[Math.min(N - 1, i + delay)] * 0.8 + (Math.random() - 0.5) * amplitude * 0.16
+      );
     }
 
     const desired = cleanSignal.map((v, i) => v + noise[i]);
@@ -286,7 +293,7 @@ export const SimulationProvider = ({ children }) => {
     setShowMetrics(false);
     setDiagnostics(null);
     markAction("ADD_NOISE");
-  }, [cleanSignal, originalFs, selectedArtifact, artifactParams]);
+  }, [cleanSignal, originalFs, selectedArtifact]);
 
   const switchCleanLead = useCallback((which) => {
     if (which !== selectedLead) {
@@ -343,7 +350,6 @@ export const SimulationProvider = ({ children }) => {
         generateECG, setGenerateECG,
 
         selectedArtifact, setSelectedArtifact,
-        artifactParams, setArtifactParams,
         generateArtifactAndDesired,
         artifactSignal, artifactSamples,
         artifactGenerated, applyNoiseTrigger, setApplyNoiseTrigger,

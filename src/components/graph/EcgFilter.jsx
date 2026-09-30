@@ -164,7 +164,7 @@ export const EcgFilter = () => {
       mseHistoryChart: result.mseHistory,
       errorHistory: result.errorHistory,
       finalWeights: result.finalWeights,
-      weightHistory: result.weightHistory,
+      weightsHistory: result.weightHistory,
       runtimeMs: result.runtimeMs,
       finalMSE: mmseAfter,
       residual: calculateMSE(s, eClean),
@@ -187,7 +187,6 @@ export const EcgFilter = () => {
   const endIdx = startIdx + lengthIdx;
   const sSlice = cleanSignal?.slice(startIdx, endIdx) || [];
   const eSlice = result.EClean.slice(startIdx, endIdx);
-  const dSlice = desiredSignal?.slice(startIdx, endIdx) || [];
 
   const leadName = selectedLead === "A" ? datasetMeta.leadNameA : datasetMeta.leadNameB;
   const algoLine = `LMS  ·  M=${config.filterOrder}  ·  μ=${config.stepSize.toExponential(2)}`;
@@ -202,15 +201,6 @@ export const EcgFilter = () => {
         borderDash: [6, 4],
         pointRadius: 0,
         tension: 0.05,
-      },
-      {
-        label: `Noisy Desired d[n] = s + artifact`,
-        data: downsampleByIndexOffset(dSlice, startIdx, 20000),
-        borderColor: "#ff7f0e",
-        borderWidth: 1.1,
-        pointRadius: 0,
-        tension: 0.05,
-        opacity: 0.65,
       },
       {
         label: `LMS Output e[n] = d[n] − ŷ[n]`,

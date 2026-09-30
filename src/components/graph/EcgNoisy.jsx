@@ -137,7 +137,7 @@ export const EcgNoisy = () => {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
       <SubPlot
-        title={`Noisy Desired Signal d[n] = s[n] + ${selectedArtifact}  (Lead ${leadName || "MLII"}, Fs=${originalFs} Hz)`}
+        title={`Noisy Desired Signal d[n] = s[n] + ${selectedArtifact} `}
         subtitle={`${artifactMeta.label}`}
         dataArr={desiredSlice}
         color="#ff7f0e"

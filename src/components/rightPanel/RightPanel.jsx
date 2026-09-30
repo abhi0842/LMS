@@ -9,6 +9,12 @@ import {
 } from "../../context/SimulationContext";
 import styles from "./rightPanel.module.css";
 
+const LMS_PRESETS = {
+  PLI: { filterOrder: 32, stepSize: 0.1 },
+  BW: { filterOrder: 64, stepSize: 0.0005 },
+  EMG: { filterOrder: 8, stepSize: 0.1 },
+};
+
 function useReferencePower(arr) {
   if (!arr?.length) return 0;
   let sum = 0;
@@ -23,7 +29,6 @@ export const RightPanel = () => {
     generateECG, loadCleanSignal, loadingState,
     windowStart, windowLength, setWindowStart, setWindowLength,
     selectedArtifact, setSelectedArtifact,
-    artifactParams, setArtifactParams,
     applyNoiseTrigger, generateArtifactAndDesired, artifactGenerated,
 
     cleanSignal, desiredSignal, artifactSignal, referenceSignal,
@@ -35,7 +40,7 @@ export const RightPanel = () => {
   } = useContext(SimulationContext);
 
   const [filterOrder, setFilterOrder] = useState(config.filterOrder ?? 32);
-  const [stepSize, setStepSize] = useState(config.stepSize ?? 0.005);
+  const [stepSize, setStepSize] = useState(config.stepSize ?? LMS_PRESETS.PLI.stepSize);
 
   const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
   const signalPower = useReferencePower(referenceSignal);
@@ -69,16 +74,16 @@ export const RightPanel = () => {
     }));
   }, [cleanSignal, desiredSignal, artifactSignal, setMetrics]);
 
-  const setArtifactParam = (type, key, value) => {
-    setArtifactParams((prev) => {
-      const section = prev[type] || {};
-      const next = { ...prev, [type]: { ...section, [key]: value } };
-      return next;
-    });
-  };
-
   const handleApplyArtifact = () => {
     generateArtifactAndDesired();
+  };
+
+  const handleArtifactChange = (artifact) => {
+    setSelectedArtifact(artifact);
+    const preset = LMS_PRESETS[artifact];
+    setFilterOrder(preset.filterOrder);
+    setStepSize(preset.stepSize);
+    setConfig({ filterType: "LMS", ...preset });
   };
 
   const handleRunLMS = () => {
@@ -98,14 +103,12 @@ export const RightPanel = () => {
   return (
     <div className={styles.rightPanelContainer}>
       <div className={styles.right}>
-        <h2>
-          LMS Adaptive Filter — ECG Denoising Lab
-        </h2>
+        
 
         {/* Step 1: Dataset */}
         <div id="datasetSection" className={styles.box}>
           <h3>Step 1: Load Clean ECG Reference s[n]</h3>
-          <label>Dataset </label>
+          <label>Dataset</label>
           <select
             id="datasetSelector"
             value={selectedDataset}
@@ -115,13 +118,6 @@ export const RightPanel = () => {
               <option key={d.id} value={d.id}>{d.label}</option>
             ))}
           </select>
-
-         
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            
-            
-          </div>
-
           <div className={styles.buttonContainer}>
             <button
               type="button"
@@ -129,8 +125,9 @@ export const RightPanel = () => {
               disabled={loadingState === "primary"}
               onClick={() => loadCleanSignal(selectedDataset)}
             >
-              {loadingState === "primary" ? "⏳ Loading dataset..." : "Load Clean ECG"}
+              {loadingState === "primary" ? "⏳ Loading dataset..." : "Load Signal"}
             </button>
+            
           </div>
 
           {generateECG && (
@@ -170,66 +167,18 @@ export const RightPanel = () => {
 
         {/* Step 2: Artifact */}
         <div id="artifactSection" className={styles.box}>
-          <h3>Step 2: Add Artifact → d[n] = s[n] + n₀[n]</h3>
+          <h3>Step 2: Add Artifact → d[n] = s[n] + v[n]</h3>
           
           <select
             id="artifactSelector"
             value={selectedArtifact}
-            onChange={(e) => setSelectedArtifact(e.target.value)}
+            onChange={(e) => handleArtifactChange(e.target.value)}
             disabled={!generateECG}
           >
             {ARTIFACT_TYPES.map((a) => (
               <option key={a.id} value={a.id}>{a.label}</option>
             ))}
           </select>
-
-          {selectedArtifact === "BW" && (
-            <>
-              <label>BW amplitude (mV)</label>
-              <input
-                type="number" min="0" max="2" step="0.01"
-                value={artifactParams.BW.amplitude}
-                onChange={(e) => setArtifactParam("BW", "amplitude", Number(e.target.value))}
-                onBlur={(e) => setArtifactParam("BW", "amplitude", clamp(Number(e.target.value) || 0, 0, 2))}
-              />
-              <label>BW frequency (Hz)</label>
-              <input
-                type="number" min="0.05" max="2" step="0.01"
-                value={artifactParams.BW.freq}
-                onChange={(e) => setArtifactParam("BW", "freq", Number(e.target.value))}
-                onBlur={(e) => setArtifactParam("BW", "freq", clamp(Number(e.target.value) || 0.33, 0.05, 2))}
-              />
-            </>
-          )}
-          {selectedArtifact === "PLI" && (
-            <>
-              <label>PLI amplitude (mV)</label>
-              <input
-                type="number" min="0" max="2" step="0.01"
-                value={artifactParams.PLI.amplitude}
-                onChange={(e) => setArtifactParam("PLI", "amplitude", Number(e.target.value))}
-                onBlur={(e) => setArtifactParam("PLI", "amplitude", clamp(Number(e.target.value) || 0, 0, 2))}
-              />
-              <label>PLI frequency (Hz)</label>
-              <input
-                type="number" min="45" max="70" step="1"
-                value={artifactParams.PLI.freq}
-                onChange={(e) => setArtifactParam("PLI", "freq", Number(e.target.value))}
-                onBlur={(e) => setArtifactParam("PLI", "freq", clamp(Number(e.target.value) || 50, 45, 70))}
-              />
-            </>
-          )}
-          {selectedArtifact === "EMG" && (
-            <>
-              <label>EMG amplitude (mV, σ)</label>
-              <input
-                type="number" min="0" max="2" step="0.001"
-                value={artifactParams.EMG.amplitude}
-                onChange={(e) => setArtifactParam("EMG", "amplitude", Number(e.target.value))}
-                onBlur={(e) => setArtifactParam("EMG", "amplitude", clamp(Number(e.target.value) || 0, 0, 2))}
-              />
-            </>
-          )}
 
           <div className={styles.buttonContainer}>
             <button

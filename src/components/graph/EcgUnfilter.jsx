@@ -54,7 +54,7 @@ export const EcgUnfilter = () => {
   const data = {
     datasets: [
       {
-        label: `Clean ECG s[n] — ${leadName || "MLII"} lead, Dataset ${selectedDataset.toUpperCase()} (MIT-BIH ${selectedDataset})`,
+        label: `Clean ECG s[n] )`,
         data: plotData,
         borderColor: "#1f77b4",
         backgroundColor: "rgba(31, 119, 180, 0.05)",
@@ -74,7 +74,7 @@ export const EcgUnfilter = () => {
       legend: { display: true, position: "top" },
       title: {
         display: true,
-        text: `Clean ECG s[n] — MIT-BIH Record ${selectedDataset}, ${leadName || "MLII"} lead  (Fs = ${originalFs} Hz)`,
+        text: `Clean ECG s[n] `,
         font: { size: 14, weight: "bold" },
         color: "#222",
       },
