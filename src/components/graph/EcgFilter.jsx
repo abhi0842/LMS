@@ -222,7 +222,7 @@ export const EcgFilter = () => {
       legend: { display: true, position: "bottom", labels: { boxWidth: 16, font: { size: 12 } } },
       title: {
         display: true,
-        text: `(a)  Time-Domain Comparison  ·  ${algoLine}`,
+        text: `LMS output & Time-Domain Comparison  ${algoLine}`,
         font: { size: 14, weight: "bold" },
         color: "#111",
         padding: { bottom: 14 },

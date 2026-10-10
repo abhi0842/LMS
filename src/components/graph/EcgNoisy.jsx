@@ -11,6 +11,7 @@ import {
   Filler,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
+import zoomPlugin from "chartjs-plugin-zoom";
 import { SimulationContext, ARTIFACT_TYPES } from "../../context/SimulationContext";
 
 ChartJS.register(
@@ -21,7 +22,8 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
+  zoomPlugin,
 );
 
 const downsampleByIndexOffset = (arr, offset, maxPoints = 25000) => {
@@ -38,19 +40,18 @@ const downsampleByIndexOffset = (arr, offset, maxPoints = 25000) => {
 };
 
 const ARTIFACT_TITLES = {
- 
   PLI: "Power Line Interference (PLI) Reference Noise x[n]",
-   BW: "Baseline Wander (BW) Reference Noise x[n]",
+  BW: "Baseline Wander (BW) Reference Noise x[n]",
   EMG: "Electromyogram / Muscle (EMG) Reference Noise x[n]",
 };
 
 const ARTIFACT_COLORS = {
-  BW: "#a0522d",
-  PLI: "#9400d3",
-  EMG: "#708090",
+  BW: "#b08968",
+  PLI: "#b08968",
+  EMG: "#b08968",
 };
 
-const SubPlot = ({ title, dataArr, color, subtitle, xOffset }) => {
+const SubPlot = ({ title, dataArr, color, subtitle, xOffset, height = 150, zoomable = false }) => {
   const plot = useMemo(() => downsampleByIndexOffset(dataArr, xOffset || 0, 25000), [dataArr, xOffset]);
   const chartData = {
     datasets: [
@@ -61,7 +62,7 @@ const SubPlot = ({ title, dataArr, color, subtitle, xOffset }) => {
         backgroundColor: `${color}22`,
         fill: false,
         tension: 0.05,
-        borderWidth: 1.3,
+        borderWidth: 1.7,
         pointRadius: 0,
       },
     ],
@@ -84,6 +85,12 @@ const SubPlot = ({ title, dataArr, color, subtitle, xOffset }) => {
             `Sample n=${ctx.parsed.x?.toLocaleString()} · Amplitude=${Number(ctx.parsed.y).toFixed(4)} mV`,
         },
       },
+      ...(zoomable && {
+        zoom: {
+          pan: { enabled: true, mode: "x" },
+          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: "x" },
+        },
+      }),
     },
     scales: {
       x: {
@@ -100,33 +107,32 @@ const SubPlot = ({ title, dataArr, color, subtitle, xOffset }) => {
   };
   return (
     <div style={{ background: "white", borderRadius: "6px", padding: "0.5rem", boxShadow: "0 2px 10px rgba(0,0,0,0.06)", marginBottom: "0.75rem" }}>
-      <Line data={chartData} options={options} height={120} />
+      <Line data={chartData} options={options} height={height} />
     </div>
   );
 };
 
 export const EcgNoisy = () => {
   const {
-    desiredSignal, artifactSignal, referenceSignal,
+    desiredSignal, referenceSignal,
     selectedArtifact, originalFs,
-    datasetMeta, selectedLead, cleanSignal,
     windowStart, windowLength,
   } = useContext(SimulationContext);
 
   const artifactMeta = ARTIFACT_TYPES.find((a) => a.id === selectedArtifact) || ARTIFACT_TYPES[0];
-  const leadName = selectedLead === "A" ? datasetMeta.leadNameA : datasetMeta.leadNameB;
 
-  const [desiredSlice, artifactSlice, referenceSlice, startOffset] = useMemo(() => {
+  const [desiredSlice, referenceSlice, startOffset, referenceSubtitle] = useMemo(() => {
     const N = desiredSignal?.length || 0;
     const start = Math.max(0, Math.min(N - 1, Math.floor(windowStart) || 0));
     const length = Math.max(1, Math.min(N - start, Math.floor(windowLength) || 1));
+    const frequency = selectedArtifact === "PLI" ? "50 Hz" : selectedArtifact === "BW" ? "0.33 Hz" : "Broadband";
     return [
       desiredSignal?.slice(start, start + length) || [],
-      artifactSignal?.slice(start, start + length) || [],
       referenceSignal?.slice(start, start + length) || [],
       start,
+      `${frequency} · full selected window (${(length / originalFs).toFixed(2)} s)`,
     ];
-  }, [desiredSignal, artifactSignal, referenceSignal, windowStart, windowLength]);
+  }, [desiredSignal, referenceSignal, selectedArtifact, originalFs, windowStart, windowLength]);
 
   if (!desiredSignal?.length) {
     return <div className="ecg-placeholder">Select artifact and add it to the clean ECG in Step 2.</div>;
@@ -140,15 +146,17 @@ export const EcgNoisy = () => {
         title={`Noisy Desired Signal d[n] = s[n] + ${selectedArtifact} `}
         subtitle={`${artifactMeta.label}`}
         dataArr={desiredSlice}
-        color="#ff7f0e"
+        color={color}
         xOffset={startOffset}
       />
       <SubPlot
         title={`Filter Reference x[n] — ${ARTIFACT_TITLES[selectedArtifact] || "Reference x[n]"}`}
-      
+        subtitle={referenceSubtitle}
         dataArr={referenceSlice}
         color={color}
         xOffset={startOffset}
+        height={180}
+        zoomable
       />
     </div>
   );
