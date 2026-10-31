@@ -80,11 +80,11 @@ export const EcgFilter = () => {
     const N = Math.min(referenceSignal.length, desiredSignal.length);
     if (N < 1) return null;
 
-    const xn = referenceSignal.slice(0, N);
-    const dn = desiredSignal.slice(0, N);
+    const referenceInput = referenceSignal.slice(0, N);
+    const noisyDesiredSignal = desiredSignal.slice(0, N);
 
     try {
-      const out = filterSignalLMS(xn, dn, {
+      const out = filterSignalLMS(referenceInput, noisyDesiredSignal, {
         filterOrder: config.filterOrder,
         stepSize: config.stepSize,
         returnDiagnostics: true,

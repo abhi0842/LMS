@@ -14,17 +14,17 @@ export function calculateMSE(reference, filtered) {
   }
   return acc / n;
 }
-export function filterSignalLMS(noisy, reference, options = {}) {
+export function filterSignalLMS(inputSignal, desiredSignal, options = {}) {
   const { filterOrder, stepSize, returnDiagnostics = false } = options;
-  if (!Array.isArray(noisy) || noisy.length === 0) return returnDiagnostics ? { yFiltered: [], diagnostics: {} } : [];
-  if (!Array.isArray(reference) || reference.length === 0) return returnDiagnostics ? { yFiltered: [], diagnostics: {} } : [];
+  if (!Array.isArray(inputSignal) || inputSignal.length === 0) return returnDiagnostics ? { yFiltered: [], diagnostics: {} } : [];
+  if (!Array.isArray(desiredSignal) || desiredSignal.length === 0) return returnDiagnostics ? { yFiltered: [], diagnostics: {} } : [];
 
-  const N = Math.min(noisy.length, reference.length);
+  const N = Math.min(inputSignal.length, desiredSignal.length);
   const M = Math.max(1, Math.min(256, Math.floor(filterOrder ?? 1)));
   
-  // Calculate signal power to determine stable step size bound
-  const p_u = noisy.reduce((acc, v) => acc + v * v, 0) / noisy.length;
-  const muMax = 1 / (M * p_u + 1e-8);
+  // Estimate input power to bound the LMS step size.
+  const inputPower = inputSignal.reduce((acc, v) => acc + v * v, 0) / inputSignal.length;
+  const muMax = 1 / (M * inputPower + 1e-8);
   const mu = clampNumber(stepSize ?? 0.01, 1e-8, muMax * 0.9);
 
   const w = new Array(M).fill(0);
@@ -37,15 +37,15 @@ export function filterSignalLMS(noisy, reference, options = {}) {
     const xVec = new Array(M);
     for (let k = 0; k < M; k++) {
       const idx = n - k;
-      xVec[k] = idx >= 0 ? noisy[idx] : 0;
+      xVec[k] = idx >= 0 ? inputSignal[idx] : 0;
     }
 
-    // y[n] = w^T xVec (Estimated Noise)
+    // y[n] = w^T xVec (estimated artifact)
     let y = 0;
     for (let k = 0; k < M; k++) y += w[k] * xVec[k];
 
-    const d = reference[n]; // Noisy Signal
-    const e = d - y; // Cleaned Signal (Error)
+    const d = desiredSignal[n];
+    const e = d - y;
 
     yFiltered[n] = e;
 
@@ -62,7 +62,7 @@ export function filterSignalLMS(noisy, reference, options = {}) {
       w[k] = wNew;
     }
     // Guard output
-    if (!Number.isFinite(yFiltered[n])) yFiltered[n] = reference[n] || 0;
+    if (!Number.isFinite(yFiltered[n])) yFiltered[n] = desiredSignal[n] || 0;
   }
 
   if (returnDiagnostics) {
@@ -71,7 +71,7 @@ export function filterSignalLMS(noisy, reference, options = {}) {
       yNoise: yNoise,
       diagnostics: {
         weightsHistory,
-        signalPower: p_u,
+        signalPower: inputPower,
         muMax: muMax,
         muUsed: mu,
       },

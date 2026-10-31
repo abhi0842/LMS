@@ -84,8 +84,8 @@ export const LMSvsRLSComparison = () => {
     setRunning(true);
     try {
       const N = Math.min(referenceSignal.length, desiredSignal.length);
-      const xn = referenceSignal.slice(0, N);
-      const dn = desiredSignal.slice(0, N);
+      const referenceInput = referenceSignal.slice(0, N);
+      const noisyDesiredSignal = desiredSignal.slice(0, N);
       const sn = cleanSignal?.length ? cleanSignal.slice(0, N) : null;
       const n0 = artifactSignal?.length ? artifactSignal.slice(0, N) : null;
 
@@ -94,7 +94,7 @@ export const LMSvsRLSComparison = () => {
 
       // --- LMS ---
       const tLms0 = performance.now();
-      const lms = filterSignalLMS(xn, dn, {
+      const lms = filterSignalLMS(referenceInput, noisyDesiredSignal, {
         filterOrder: order,
         stepSize: 0.005,
         returnDiagnostics: true,
@@ -112,7 +112,7 @@ export const LMSvsRLSComparison = () => {
 
       // --- RLS ---
       const tRls0 = performance.now();
-      const rls = filterSignalRLS(xn, dn, {
+      const rls = filterSignalRLS(referenceInput, noisyDesiredSignal, {
         filterOrder: order,
         forgettingFactor: 0.995,
         regularization: 0.01,
@@ -129,9 +129,9 @@ export const LMSvsRLSComparison = () => {
       const rlsConvIter = findConvergenceIteration(rlsConvMSE);
 
       // Before (benchmark)
-      const mmseBefore = sn ? calculateMMSE(sn, dn) : NaN;
-      const psnrBefore = sn ? calculatePSNR(sn, dn) : NaN;
-      const ccfBefore  = sn ? calculateCCF(sn, dn) : NaN;
+      const mmseBefore = sn ? calculateMMSE(sn, noisyDesiredSignal) : NaN;
+      const psnrBefore = sn ? calculatePSNR(sn, noisyDesiredSignal) : NaN;
+      const ccfBefore  = sn ? calculateCCF(sn, noisyDesiredSignal) : NaN;
       const snrBefore  = (sn && n0) ? calculateSNR(sn, n0) : NaN;
 
       const payload = {

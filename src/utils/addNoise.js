@@ -18,3 +18,4 @@ function guassionRandom() {
 export function addMuscleNoise(signal, amplitude = 0.02) {
   return signal.map(v => v + amplitude * guassionRandom());
 }
+ 
